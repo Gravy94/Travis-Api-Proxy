@@ -3,9 +3,12 @@ package proxy;
 import java.awt.Toolkit;
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.ProtocolException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URL;
@@ -35,18 +38,16 @@ public class ProxyServer {
 	private Socket client;
 	private Json json;
 
-	// private RepoAssocIO rp;// Rimpiazzato da
 	private UtilitazionDAOImpl uDaoImpl;
 
 	private Utilization tempUtilization;
+	private Connection conn;
 
 	ProxyServer() throws InterruptedException {
-		// jsonBody = new HashMap<String, String>();
-
+		/* LETTURA DATI DAL FILE */
+		conn = ConnectionDB.getInstance("jdbc:mysql://localhost:3306/travis-proxy", "root", "root");
 		json = new Json();
-		// rp = new RepoAssocIO();
 		uDaoImpl = new UtilitazionDAOImpl();
-		// tempUtilization = new Utilization();
 	}
 
 	public static void main(String args[]) throws Exception {
@@ -54,8 +55,7 @@ public class ProxyServer {
 		int number_req = 0;
 		boolean utilizationFound;
 
-		Connection conn = ConnectionDB.getInstance("jdbc:mysql://localhost:3306/travis-proxy", "root", "root");
-		if (!conn.isClosed()) {
+		if (!myServer.conn.isClosed()) {
 			System.out.println("Listening for connection on port " + ProxyServer.PORT + " ....");
 			while (true) {
 				myServer.server = new ServerSocket(PORT);
@@ -66,7 +66,8 @@ public class ProxyServer {
 
 				// Attending slash command from Slack
 				myServer.receivePOSTMessageSlack();
-
+				
+				
 				/*
 				 * Controllare che la stringa ricevuta in text sia della forma:
 				 * registration slug repo_name
@@ -78,7 +79,7 @@ public class ProxyServer {
 					// temporary utilization (team_id and channel_id only)
 					myServer.tempUtilization = new Utilization(myServer.json);
 
-					/*SEARCHING UTILIZATION*/
+					/* SEARCHING UTILIZATION */
 					// call function searchUtilization in MODE 2 (only t_id and
 					// c_id)
 					if (myServer.uDaoImpl.searchUtilization(myServer.tempUtilization, 2)) {
@@ -91,56 +92,66 @@ public class ProxyServer {
 						System.out.println("UTENTE NON TROVATO, POSSO REGISTRARE");
 					}
 
-					
 					String stemp = myServer.json.get("text").toLowerCase();
 					// doesn't start registration function if required help
 					// registration
-					
-					
+
 					if ((stemp.contains("registration")) & !(stemp.contains("help"))) {
 						/* REGISTRATION */
-						//System.out.println("RECEIVED: " + myServer.json.get("text"));
+						// System.out.println("RECEIVED: " +
+						// myServer.json.get("text"));
 
 						if (utilizationFound == false) {
-							// link creati in this.repo_slug e
-							// this.incoming_link
-							myServer.createLinks(myServer.json.get("text"));
-							// verify if the https://travis-ci.org/slugRepo
-							// exists
-							if (myServer.verifyRepoLink()) {
-								if (myServer.saveRegistration()) {
-									// TODO after
-									myServer.sendResponseMessageSlack(myServer.incomingWebHook,
-											"Registrazione avvenuta con successo");
+
+							if (myServer.checkRegistrationParameters()) {
+								
+								// link creati in this.repoSlug e
+								// this.incomingWebHook
+								myServer.createLinks(myServer.json.get("text"));
+								// verify if the https://travis-ci.org/slugRepo
+								// exists
+								if (myServer.verifyRepoLink()) {
+									if (myServer.saveRegistration()) {
+										// TODO after
+										myServer.sendResponseMessageSlack(myServer.incomingWebHook,
+												"Registrazione avvenuta con successo");
+									} else {
+										/*
+										 * GESTIRE POSSIBILI ERRORI DI NON
+										 * REGISTRABILITA'
+										 */
+										myServer.sendResponseMessageSlack(myServer.incomingWebHook,
+												"ATTENZIONE! Errore nella registrazione!");
+									}
 								} else {
-									/*
-									 * GESTIRE POSSIBILI ERRORI DI NON
-									 * REGISTRABILITA'
-									 */
-									myServer.sendResponseMessageSlack(myServer.incomingWebHook,
-											"ATTENZIONE! Errore nella registrazione!");
+									myServer.sendResponseMessageSlack(myServer.json.get("response_url"),
+											"ERROR: repository link 'https://travis-ci.org/" + myServer.slugRepo.replace("%2F", "/")
+													+ "' does not exists!");
 								}
+							} else {
+								myServer.sendResponseMessageSlack(myServer.json.get("response_url"),
+										"ERROR: parameters are not correct!");
 							}
-						} else{
+
+						} else {
 							System.err.println("ATTENZIONE! Utente gia' registrato!");
 							myServer.sendResponseMessageSlack(myServer.tempUtilization.getIncomingWebHook(),
 									"ATTENZIONE: questo channel ha gia' una registrazione attiva!");
 						}
-							
 
 					} else {
 						switch (myServer.json.get("text").toLowerCase()) {
-						case "help+build":
+						case "help+build": // send private message about build
+											// help
 							System.out.println("RICEVUTO help build");
-
 							myServer.sendResponseMessageSlack(myServer.json.get("response_url"),
 									"Il comando */travis build* permette di inviare un segnale a Travis-Ci il quale fara' partire"
 											+ " una build sul progetto collegato nel channel del tuo team.");
 							break;
 
-						case "help+registration":
+						case "help+registration": // send private message about
+													// registration help
 							System.out.println("RICEVUTO help registration");
-
 							myServer.sendResponseMessageSlack(myServer.json.get("response_url"),
 									"Il comando *```/travis registration <Slug> <Repo_name> <Incoming_webhook>```* permette l'assegnazione"
 											+ " della chiave team-channel ad un progetto Travis indicandone: "
@@ -149,10 +160,17 @@ public class ProxyServer {
 											+ "\n`<Incoming_webhook>` il link di incoming appositamente creato per il personale channel Slack.");
 							break;
 
-						case "build": // inviare i risultati a tutto il gruppo
-										// nei
-										// link
-										// di incoming
+						case "help": // send private message about general help
+							System.out.println("RICEVUTO help");
+							myServer.sendResponseMessageSlack(myServer.json.get("response_url"),
+									"*I comandi eseguibili sono*:\n"
+											+ "-Inserire una nuova registrazione ```/travis registration <Slug> <Repo> <incoming link>``` "
+											+ "-Avviare una nuova build ```/travis build``` "
+											+ "-Chiedere aiuto sui comandi utilizzabili ```/travis help``` "
+											+ "-Chiedere aiuto su un comando in particolare ```/travis help <command_name>```");
+
+							break;
+						case "build": // send public message about build result
 							System.out.println("RICEVUTO BUILD");
 							if (utilizationFound == false) {
 								System.err.println("Comando non consentito: utente non registrato!");
@@ -168,37 +186,10 @@ public class ProxyServer {
 							}
 							break;
 
-						case "help": // inviare i risultati al solo cliente
-										// richiedente
-										// (tramite link referred)
-										// prevedere nel caso di non risposta di
-										// inviarlo al link di incoming generale
-							System.out.println("RICEVUTO help");
-
-							/*
-							 * myServer.sendResponseMessageSlack(myServer.json.
-							 * get( "response_url"),
-							 * "*I comandi eseguibili sono*:\n" +
-							 * "-Inserire una nuova registrazione ```/travis registration <Slug> <Repo>``` "
-							 * + "-Avviare una nuova build ```/travis build``` "
-							 * +
-							 * "-Chiedere aiuto sui comandi utilizzabili ```/travis help``` "
-							 * +
-							 * "-Chiedere aiuto su un comando in particolare ```/travis help <command_name>```"
-							 * );
-							 */
-							myServer.sendResponseMessageSlack(
-									"https://hooks.slack.com/services/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",
-									"*I comandi eseguibili sono*:\n"
-											+ "-Inserire una nuova registrazione ```/travis registration <Slug> <Repo> <incoming link>``` "
-											+ "-Avviare una nuova build ```/travis build``` "
-											+ "-Chiedere aiuto sui comandi utilizzabili ```/travis help``` "
-											+ "-Chiedere aiuto su un comando in particolare ```/travis help <command_name>```");
-
-							break;
-
 						default:
 							System.out.println("Errore Ricezione dati HTTP");
+							myServer.sendResponseMessageSlack(myServer.json.get("response_url"),
+									"`ERROR: Malformed request sent`");
 							Toolkit.getDefaultToolkit().beep();
 							TimeUnit.MILLISECONDS.sleep(250);
 							Toolkit.getDefaultToolkit().beep();
@@ -388,28 +379,58 @@ public class ProxyServer {
 	 * @param text
 	 *            string returned in slack json body response
 	 * @return true if there are 3 parameters including incoming link
-	 */
-	private boolean ceckParameters(String text) {
+	 */	
+	public boolean checkRegistrationParameters() {
+		String checker = this.json.get("text");
+		String beginningIncomingWebHook = "https://hooks.slack.com/services/";
+		int lenghtBeginningIncomingWebHook = beginningIncomingWebHook.length();
+		int[] plusDelimiters = new int[3];
+		
 		int i = 0, c = 0;
-		while (i < text.length() & i != -1) {
-			i = text.indexOf('+', i);
+		// check if number of parameters is 3
+		while (i < checker.length() & i != -1) {
+			i = checker.indexOf('+', i);
 			if (i != -1) {
 				// System.out.println(this.s.charAt(i) + " at " + i + "
 				// position");
+				plusDelimiters[c] = i;
 				i++;
 				c++;
 			}
 		}
-		// check numbers of parameters
+		// are not 3 parameters
 		if (c != 3) {
 			System.err.println("Error: numbers of parameters not equals to 3!");
 			return false;
 		} else {
-			// check the http://
-			if (text.contains("https://hooks.slack.com/services/"))
-				return true;
-			else {
-				System.err.println("Error: incoming link not correct!");
+			// are 3 parameters
+			if (checker.substring(0, 13).equals("registration+")) {
+//				System.out.println(checker.subSequence(plusDelimiters[0] + 1, plusDelimiters[1]));
+//				System.out.println(checker.subSequence(plusDelimiters[1] + 1, plusDelimiters[2]));
+//				System.out.println(checker.subSequence(plusDelimiters[2] + 1,
+//						plusDelimiters[2] + lenghtBeginningIncomingWebHook + 1));
+				if (checker.subSequence(plusDelimiters[0] + 1, plusDelimiters[1]).length() > 0) {
+					if (checker.subSequence(plusDelimiters[1] + 1, plusDelimiters[2]).length() > 0) {
+						if (checker
+								.subSequence(plusDelimiters[2] + 1,
+										plusDelimiters[2] + lenghtBeginningIncomingWebHook + 1)
+								.equals(beginningIncomingWebHook)) {
+
+							return true;
+						} else {
+							System.err.println("Error: incoming WebHook not correct!");
+							return false;
+						}
+					} else {
+						System.err.println("Error: Repo name is null!");
+						return false;
+					}
+				} else {
+					System.err.println("Error: Slug value is null!");
+					return false;
+				}
+			} else {
+				System.err.println("Error: malformed query registration");
 				return false;
 			}
 		}
@@ -424,9 +445,9 @@ public class ProxyServer {
 	 * @throws Exception
 	 */
 	private void createLinks(String text) {
-		// String text = this.json.get("text");
 		String temp_Repo_Slug = new String();
 		String temp_incoming_link = new String();
+
 		int c = 0;
 		int index = 13;
 		int length = text.length();
@@ -461,33 +482,74 @@ public class ProxyServer {
 	 * @return
 	 * @throws IOException
 	 */
-	private boolean verifyRepoLink() throws IOException {
+	private boolean verifyRepoLink() {
 		System.err.println("IN verifyRepoLink");
 		String temp_rl = this.slugRepo;
-		temp_rl.replace("%2F", "/");
-		this.urlGET = "https://travis-ci.org/" + temp_rl;
-
-		URL obj = new URL(this.urlGET);
+		temp_rl = temp_rl.replace("%2F", "/");
+		this.urlGET = "https://api.travis-ci.org/repositories/" + temp_rl  +".json";
+		
+		System.out.println("Stringa a cui fare richiesta get: \n"+this.urlGET);
+		URL obj = null;
+		try {
+			obj = new URL(this.urlGET);
+		} catch (MalformedURLException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
 		// Send post request
-		HttpURLConnection con = (HttpURLConnection) obj.openConnection();
+		HttpURLConnection con = null;
+		try {
+			con = (HttpURLConnection) obj.openConnection();
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		
+		
 
 		// basic reuqest header to simulate a browser request
-		con.setRequestMethod("GET");
+		try {
+			con.setRequestMethod("GET");
+		} catch (ProtocolException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
 		con.setDoOutput(true);
 
 		// reading the HTML output of the POST HTTP request
-		int responseCode = con.getResponseCode();
-		BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
-		String inputLine;
-		// while ((inputLine = in.readLine()) != null)
-		// System.out.println(inputLine);
-		in.close();
+		
+		
+		int responseCode = 0;
+		try {
+			responseCode = con.getResponseCode();
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		try{
+			BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
+			String inputLine;
+			while ((inputLine = in.readLine()) != null)
+				System.out.println(inputLine);
+			in.close();
 
-		if (responseCode == 200) {
-			System.out.println("Link esistente: responseCode= " + responseCode);
-			return true;
-		} else {
-			System.out.println("Link inesistente: responseCode= " + responseCode);
+			if (responseCode == 200) {
+				System.out.println("Link esistente: responseCode= " + responseCode);
+				return true;
+			} else {
+				System.out.println("Link inesistente: responseCode= " + responseCode);
+				return false;
+			}
+		}
+		catch(FileNotFoundException e){
+			System.out.println("E' FINITA LA PACCHIA SI TORNA A CASA");
+			return false;
+			
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		finally{
 			return false;
 		}
 	}
