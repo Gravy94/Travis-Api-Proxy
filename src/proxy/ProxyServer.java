@@ -23,7 +23,7 @@ import SQLConnection.ConnectionDB;
 
 public class ProxyServer {
 
-	private static int PORT = 50500; // Static port to communicate with server
+	private static int PORT; // Static port to communicate with server
 	// private HashMap<String, String> jsonBody; // Contains the json Body
 	// received
 	// from Slack
@@ -43,9 +43,19 @@ public class ProxyServer {
 	private Utilization tempUtilization;
 	private Connection conn;
 
+	private static boolean FIRSTTIME = true;
+	private ConfigFile cf;
+
 	ProxyServer() throws InterruptedException {
+
+		if (ProxyServer.FIRSTTIME) {
+			cf = new ConfigFile("ConfigFile.txt");
+			ProxyServer.PORT = cf.getProxyPort();
+
+			ProxyServer.FIRSTTIME = false;
+		}
 		/* LETTURA DATI DAL FILE */
-		conn = ConnectionDB.getInstance("jdbc:mysql://localhost:3306/travis-proxy", "root", "root");
+		conn = ConnectionDB.getInstance(cf.getUrlDb(), cf.getUserDb(), cf.getPasswordDb());
 		json = new Json();
 		uDaoImpl = new UtilitazionDAOImpl();
 	}
@@ -58,7 +68,7 @@ public class ProxyServer {
 		if (!myServer.conn.isClosed()) {
 			System.out.println("Listening for connection on port " + ProxyServer.PORT + " ....");
 			while (true) {
-				myServer.server = new ServerSocket(PORT);
+				myServer.server = new ServerSocket(ProxyServer.PORT);
 				myServer.client = myServer.server.accept(); // Accepting
 															// connection
 
@@ -66,8 +76,7 @@ public class ProxyServer {
 
 				// Attending slash command from Slack
 				myServer.receivePOSTMessageSlack();
-				
-				
+
 				/*
 				 * Controllare che la stringa ricevuta in text sia della forma:
 				 * registration slug repo_name
@@ -104,7 +113,7 @@ public class ProxyServer {
 						if (utilizationFound == false) {
 
 							if (myServer.checkRegistrationParameters()) {
-								
+
 								// link creati in this.repoSlug e
 								// this.incomingWebHook
 								myServer.createLinks(myServer.json.get("text"));
@@ -125,8 +134,8 @@ public class ProxyServer {
 									}
 								} else {
 									myServer.sendResponseMessageSlack(myServer.json.get("response_url"),
-											"ERROR: repository link 'https://travis-ci.org/" + myServer.slugRepo.replace("%2F", "/")
-													+ "' does not exists!");
+											"ERROR: repository link 'https://travis-ci.org/"
+													+ myServer.slugRepo.replace("%2F", "/") + "' does not exists!");
 								}
 							} else {
 								myServer.sendResponseMessageSlack(myServer.json.get("response_url"),
@@ -225,6 +234,7 @@ public class ProxyServer {
 		System.out.println("/** INIZIO sendResponseMessageSlack**/");
 		String postDataBody = "{\"text\": \"" + message + "\"}"; /* Personalizzabile */
 		URL obj = new URL(urlPOST);
+		//URL obj = new URL("https://hooks.slack.com/services/T3P12PZCM/B5F4BQ2EM/I8QNBYEzebYqt81bSGPguZr");
 
 		// Send post request
 		HttpURLConnection con = (HttpURLConnection) obj.openConnection();
@@ -379,13 +389,13 @@ public class ProxyServer {
 	 * @param text
 	 *            string returned in slack json body response
 	 * @return true if there are 3 parameters including incoming link
-	 */	
+	 */
 	public boolean checkRegistrationParameters() {
 		String checker = this.json.get("text");
 		String beginningIncomingWebHook = "https://hooks.slack.com/services/";
 		int lenghtBeginningIncomingWebHook = beginningIncomingWebHook.length();
 		int[] plusDelimiters = new int[3];
-		
+
 		int i = 0, c = 0;
 		// check if number of parameters is 3
 		while (i < checker.length() & i != -1) {
@@ -405,10 +415,12 @@ public class ProxyServer {
 		} else {
 			// are 3 parameters
 			if (checker.substring(0, 13).equals("registration+")) {
-//				System.out.println(checker.subSequence(plusDelimiters[0] + 1, plusDelimiters[1]));
-//				System.out.println(checker.subSequence(plusDelimiters[1] + 1, plusDelimiters[2]));
-//				System.out.println(checker.subSequence(plusDelimiters[2] + 1,
-//						plusDelimiters[2] + lenghtBeginningIncomingWebHook + 1));
+				// System.out.println(checker.subSequence(plusDelimiters[0] + 1,
+				// plusDelimiters[1]));
+				// System.out.println(checker.subSequence(plusDelimiters[1] + 1,
+				// plusDelimiters[2]));
+				// System.out.println(checker.subSequence(plusDelimiters[2] + 1,
+				// plusDelimiters[2] + lenghtBeginningIncomingWebHook + 1));
 				if (checker.subSequence(plusDelimiters[0] + 1, plusDelimiters[1]).length() > 0) {
 					if (checker.subSequence(plusDelimiters[1] + 1, plusDelimiters[2]).length() > 0) {
 						if (checker
@@ -486,9 +498,9 @@ public class ProxyServer {
 		System.err.println("IN verifyRepoLink");
 		String temp_rl = this.slugRepo;
 		temp_rl = temp_rl.replace("%2F", "/");
-		this.urlGET = "https://api.travis-ci.org/repositories/" + temp_rl  +".json";
-		
-		System.out.println("Stringa a cui fare richiesta get: \n"+this.urlGET);
+		this.urlGET = "https://api.travis-ci.org/repositories/" + temp_rl + ".json";
+
+		System.out.println("Stringa a cui fare richiesta get: \n" + this.urlGET);
 		URL obj = null;
 		try {
 			obj = new URL(this.urlGET);
@@ -496,7 +508,7 @@ public class ProxyServer {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
-		// Send post request
+		// Send get request
 		HttpURLConnection con = null;
 		try {
 			con = (HttpURLConnection) obj.openConnection();
@@ -504,8 +516,6 @@ public class ProxyServer {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
-		
-		
 
 		// basic reuqest header to simulate a browser request
 		try {
@@ -517,16 +527,16 @@ public class ProxyServer {
 		con.setDoOutput(true);
 
 		// reading the HTML output of the POST HTTP request
-		
-		
+
 		int responseCode = 0;
 		try {
 			responseCode = con.getResponseCode();
 		} catch (IOException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
+			return false;
 		}
-		try{
+		try {
 			BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
 			String inputLine;
 			while ((inputLine = in.readLine()) != null)
@@ -540,16 +550,13 @@ public class ProxyServer {
 				System.out.println("Link inesistente: responseCode= " + responseCode);
 				return false;
 			}
-		}
-		catch(FileNotFoundException e){
-			System.out.println("E' FINITA LA PACCHIA SI TORNA A CASA");
+		} catch (FileNotFoundException e) {
+			System.out.println("Error: problem with data sending in verifyRepoLink");
 			return false;
-			
+
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
-		}
-		finally{
+			System.out.println("Error: problem with data sending in verifyRepoLink");
 			return false;
 		}
 	}
@@ -563,27 +570,4 @@ public class ProxyServer {
 		return this.uDaoImpl.Insert(new Utilization(this.json, this.slugRepo, this.incomingWebHook));
 	}
 
-	private void send200Ok() throws Exception {
-
-		URL obj = new URL(this.incomingWebHook);
-		// Send post request
-		HttpURLConnection con = (HttpURLConnection) obj.openConnection();
-
-		// basic reuqest header to simulate a browser request
-		con.setRequestMethod("GET");
-		con.setRequestProperty("Accept-Language", "en-US,en;q=0.5");
-		con.setRequestProperty("Upgrade-Insecure-Requests", "1");
-		con.setRequestProperty("Connection", "keep-alive");
-		con.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
-		con.setRequestProperty("Accept-Encoding", "gzip, deflate, br");
-		con.setDoOutput(true);
-
-		// reading the HTML output of the POST HTTP request
-		int responseCode = con.getResponseCode();
-		BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
-		String inputLine;
-		// while ((inputLine = in.readLine()) != null)
-		// System.out.println(inputLine);
-		in.close();
-	}
 }
