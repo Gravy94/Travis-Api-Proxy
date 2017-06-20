@@ -33,8 +33,4 @@ public class ConnectionDB {
 	    }
 	    return istanza;
 	  }
-}
-
-
-
-	
+}	

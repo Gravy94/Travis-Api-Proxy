@@ -51,11 +51,12 @@ public class ProxyServer {
 		if (ProxyServer.FIRSTTIME) {
 			cf = new ConfigFile("ConfigFile.txt");
 			ProxyServer.PORT = cf.getProxyPort();
+			new LoadDb(cf.getUrlDb(), cf.getDb(), cf.getUserDb(), cf.getPasswordDb());
 
 			ProxyServer.FIRSTTIME = false;
 		}
 		/* LETTURA DATI DAL FILE */
-		conn = ConnectionDB.getInstance(cf.getUrlDb(), cf.getUserDb(), cf.getPasswordDb());
+		conn = ConnectionDB.getInstance(cf.getUrlDb()+cf.getDb(), cf.getUserDb(), cf.getPasswordDb());
 		json = new Json();
 		uDaoImpl = new UtilitazionDAOImpl();
 	}
@@ -67,12 +68,11 @@ public class ProxyServer {
 
 		if (!myServer.conn.isClosed()) {
 			System.out.println("Listening for connection on port " + ProxyServer.PORT + " ....");
+			myServer.server = new ServerSocket(ProxyServer.PORT);
+			
 			while (true) {
-				myServer.server = new ServerSocket(ProxyServer.PORT);
+				
 				myServer.client = myServer.server.accept(); // Accepting
-															// connection
-
-				// TODO Aggiungere Thread
 
 				// Attending slash command from Slack
 				myServer.receivePOSTMessageSlack();
@@ -93,12 +93,12 @@ public class ProxyServer {
 					// c_id)
 					if (myServer.uDaoImpl.searchUtilization(myServer.tempUtilization, 2)) {
 						utilizationFound = true;
-						System.out.println("UTENTE TROVATO");
+						//System.out.println("UTENTE TROVATO");
 						// load User data
 						myServer.tempUtilization = myServer.uDaoImpl.Read2(myServer.tempUtilization);
 					} else {
 						utilizationFound = false;
-						System.out.println("UTENTE NON TROVATO, POSSO REGISTRARE");
+						//System.out.println("UTENTE NON TROVATO, POSSO REGISTRARE");
 					}
 
 					String stemp = myServer.json.get("text").toLowerCase();
@@ -107,7 +107,7 @@ public class ProxyServer {
 
 					if ((stemp.contains("registration")) & !(stemp.contains("help"))) {
 						/* REGISTRATION */
-						// System.out.println("RECEIVED: " +
+						// //System.out.println("RECEIVED: " +
 						// myServer.json.get("text"));
 
 						if (utilizationFound == false) {
@@ -143,7 +143,7 @@ public class ProxyServer {
 							}
 
 						} else {
-							System.err.println("ATTENZIONE! Utente gia' registrato!");
+							//System.err.println("ATTENZIONE! Utente gia' registrato!");
 							myServer.sendResponseMessageSlack(myServer.tempUtilization.getIncomingWebHook(),
 									"ATTENZIONE: questo channel ha gia' una registrazione attiva!");
 						}
@@ -152,7 +152,7 @@ public class ProxyServer {
 						switch (myServer.json.get("text").toLowerCase()) {
 						case "help+build": // send private message about build
 											// help
-							System.out.println("RICEVUTO help build");
+							//System.out.println("RICEVUTO help build");
 							myServer.sendResponseMessageSlack(myServer.json.get("response_url"),
 									"Il comando */travis build* permette di inviare un segnale a Travis-Ci il quale fara' partire"
 											+ " una build sul progetto collegato nel channel del tuo team.");
@@ -160,7 +160,7 @@ public class ProxyServer {
 
 						case "help+registration": // send private message about
 													// registration help
-							System.out.println("RICEVUTO help registration");
+							//System.out.println("RICEVUTO help registration");
 							myServer.sendResponseMessageSlack(myServer.json.get("response_url"),
 									"Il comando *```/travis registration <Slug> <Repo_name> <Incoming_webhook>```* permette l'assegnazione"
 											+ " della chiave team-channel ad un progetto Travis indicandone: "
@@ -170,7 +170,7 @@ public class ProxyServer {
 							break;
 
 						case "help": // send private message about general help
-							System.out.println("RICEVUTO help");
+							//System.out.println("RICEVUTO help");
 							myServer.sendResponseMessageSlack(myServer.json.get("response_url"),
 									"*I comandi eseguibili sono*:\n"
 											+ "-Inserire una nuova registrazione ```/travis registration <Slug> <Repo> <incoming link>``` "
@@ -180,7 +180,7 @@ public class ProxyServer {
 
 							break;
 						case "build": // send public message about build result
-							System.out.println("RICEVUTO BUILD");
+							//System.out.println("RICEVUTO BUILD");
 							if (utilizationFound == false) {
 								System.err.println("Comando non consentito: utente non registrato!");
 								// myServer.sendResponseMessageSlack(myServer.json.get("response_url"),
@@ -196,7 +196,7 @@ public class ProxyServer {
 							break;
 
 						default:
-							System.out.println("Errore Ricezione dati HTTP");
+							//System.out.println("Errore Ricezione dati HTTP");
 							myServer.sendResponseMessageSlack(myServer.json.get("response_url"),
 									"`ERROR: Malformed request sent`");
 							Toolkit.getDefaultToolkit().beep();
@@ -219,11 +219,12 @@ public class ProxyServer {
 				Toolkit.getDefaultToolkit().beep();
 				SimpleDateFormat formatTime = new SimpleDateFormat("E dd.MM.yyyy 'at' hh:mm:ss a");
 				Date date = new Date(System.currentTimeMillis());
-				System.out.println("Number of requests: " + ++number_req + " \n\t in " + formatTime.format(date));
-
+				//System.out.println("Number of requests: " + ++number_req + " \n\t in " + formatTime.format(date));
+				
+				myServer.client.close();
 			}
-
 		} else {
+			
 			System.err.println("Connessione col DB non instaurata!");
 		}
 
@@ -231,7 +232,7 @@ public class ProxyServer {
 
 	private void sendResponseMessageSlack(String urlPOST, String message) throws Exception {
 
-		System.out.println("/** INIZIO sendResponseMessageSlack**/");
+		//System.out.println("/** INIZIO sendResponseMessageSlack**/");
 		String postDataBody = "{\"text\": \"" + message + "\"}"; /* Personalizzabile */
 		URL obj = new URL(urlPOST);
 		//URL obj = new URL("https://hooks.slack.com/services/T3P12PZCM/B5F4BQ2EM/I8QNBYEzebYqt81bSGPguZr");
@@ -257,19 +258,19 @@ public class ProxyServer {
 
 		// reading the HTML output of the POST HTTP request
 		int responseCode = con.getResponseCode();
-		System.out.println("Response Code: " + responseCode);
+		//System.out.println("Response Code: " + responseCode);
 		BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
 		String inputLine;
 		while ((inputLine = in.readLine()) != null)
 			System.out.println("Messaggio ricevuto : " + inputLine);
 		in.close();
 
-		System.out.println("/** FINE sendResponseMessageSlack**/");
+		//System.out.println("/** FINE sendResponseMessageSlack**/");
 
 	}
 
 	private void receivePOSTMessageSlack() throws Exception {
-		System.out.println("/** INIZIO receivePOSTMessageSlack**/");
+		//System.out.println("/** INIZIO receivePOSTMessageSlack**/");
 		// Getting input request
 		InputStreamReader input = new InputStreamReader(this.client.getInputStream());
 		BufferedReader reader = new BufferedReader(input);
@@ -292,31 +293,23 @@ public class ProxyServer {
 		HashMap<String, String> jsonBody;
 		jsonBody = jsonTemp.jsonParserSlack(buffer);
 
-		System.out.println(jsonBody);
+		//System.out.println(jsonBody);
 		// System.out.println("INVIO RISPOSTA");
 
-		/*
-		 * BufferedWriter out = new BufferedWriter(new
-		 * OutputStreamWriter(client.getOutputStream())); out.write(
-		 * "HTTP/1.0 200 OK");
-		 */
-
-		// this.sendResponseMessageSlack(this.jsonBody.get("response_url"),
-		// "build started");
 
 		input.close();
 		reader.close();
-		this.client.close();
-		this.server.close();
+//		this.client.close();
+//		this.server.close();
 
-		System.out.println("/** FINE receivePOSTMessageSlack**/");
+		//System.out.println("/** FINE receivePOSTMessageSlack**/");
 		this.json = jsonTemp;
 
 	}
 
 	private void sendBuildCommandTravis(String user) throws Exception {
 
-		System.out.println("/** INIZIO sendBuildCommandTravis**/");
+		//System.out.println("/** INIZIO sendBuildCommandTravis**/");
 
 		// Parametrizzare il token, slugid|repo ed eventualmente il messaggio
 		// ritornare eventuali errori
@@ -326,7 +319,7 @@ public class ProxyServer {
 		// Personalizzato */
 		urlPOST = "https://api.travis-ci.org/repo/" + this.tempUtilization.getSlugRepo() + "/requests";
 
-		System.err.println(urlPOST);
+		//System.err.println(urlPOST);
 		postDataBody = "{\"request\": {\"message\": \"Build started from " + user + "\"}}"; /* Personalizabile */
 
 		URL obj = new URL(urlPOST);
@@ -379,7 +372,7 @@ public class ProxyServer {
 			System.out.println(inputLine);
 		in.close();
 
-		System.out.println("/** FINE sendBuildCommandTravis**/");
+		//System.out.println("/** FINE sendBuildCommandTravis**/");
 
 	}
 
@@ -495,12 +488,12 @@ public class ProxyServer {
 	 * @throws IOException
 	 */
 	private boolean verifyRepoLink() {
-		System.err.println("IN verifyRepoLink");
+		//System.err.println("IN verifyRepoLink");
 		String temp_rl = this.slugRepo;
 		temp_rl = temp_rl.replace("%2F", "/");
 		this.urlGET = "https://api.travis-ci.org/repositories/" + temp_rl + ".json";
 
-		System.out.println("Stringa a cui fare richiesta get: \n" + this.urlGET);
+		//System.out.println("Stringa a cui fare richiesta get: \n" + this.urlGET);
 		URL obj = null;
 		try {
 			obj = new URL(this.urlGET);

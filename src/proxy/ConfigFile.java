@@ -14,9 +14,13 @@ public class ConfigFile {
 	private Path path;
 
 	private int proxy_port = 0;
-	private String url_db = null;
+	private String url = null;
+	private String db = null;
 	private String user_db = null;
 	private String password_db = null;
+	private String db_port = null;
+
+	private String url_db = null;
 
 	ConfigFile(String file) {
 		File f = new File(file);
@@ -26,7 +30,7 @@ public class ConfigFile {
 			this.path = f.toPath();
 			hm = this.getConfigData();
 			System.out.println("Initializing server on port: " + this.getProxyPort());
-			System.out.println("Connecting to DBMS: " + this.getUrlDb());
+			System.out.println("Connecting to DBMS: " + this.getUrlDb()+this.getDb());
 			System.out.println("With Users: " + this.getUserDb());
 			System.out.println("and Password: " + this.getPasswordDb());
 		}
@@ -40,16 +44,20 @@ public class ConfigFile {
 		// List used as comparator
 		ArrayList<String> listParam = new ArrayList<String>();
 		listParam.add("proxy_port");
-		listParam.add("url_db");
+		listParam.add("url");
+		listParam.add("db");
 		listParam.add("user_db");
 		listParam.add("password_db");
+		listParam.add("db_port");
 
 		// HashMap to return completed
 		HashMap<String, String> tempHm = new HashMap<String, String>();
 		tempHm.put("proxy_port", "null");
-		tempHm.put("url_db", "null");
+		tempHm.put("url", "null");
+		tempHm.put("db", "null");
 		tempHm.put("user_db", "null");
 		tempHm.put("password_db", "null");
+		tempHm.put("db_port", "null");
 
 		// List used to read in file
 		ArrayList<String> listFile = new ArrayList<String>();
@@ -81,9 +89,13 @@ public class ConfigFile {
 		}
 		if (allRight) {
 			this.proxy_port = Integer.parseInt(tempHm.get("proxy_port"));
-			this.url_db = tempHm.get("url_db");
+			this.url = tempHm.get("url");
+			this.db = tempHm.get("db");
 			this.user_db = tempHm.get("user_db");
 			this.password_db = tempHm.get("password_db");
+			this.db_port = tempHm.get("db_port");
+			this.url_db = tempHm.get("url") + ":" + tempHm.get("db_port") + "/";
+
 			return tempHm;
 		} else
 			return null;
@@ -94,6 +106,7 @@ public class ConfigFile {
 	}
 
 	public String getUrlDb() {
+
 		return this.url_db;
 	}
 
@@ -103,6 +116,14 @@ public class ConfigFile {
 
 	public String getPasswordDb() {
 		return this.password_db;
+	}
+
+	public String getDb() {
+		return this.db;
+	}
+
+	private String getDbPort() {
+		return this.db_port;
 	}
 
 }
