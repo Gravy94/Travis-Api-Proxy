@@ -107,7 +107,7 @@ public class UtilitazionDAOImpl implements DAO {
 			resultSet.last();
 			lenght = resultSet.getRow();
 
-			System.out.println("Lunghezza di lettura t_ID e c_ID: " + lenght);
+			//System.out.println("Lunghezza di lettura t_ID e c_ID: " + lenght);
 
 		} catch (SQLException e) {
 			System.err.println("ERRORE NEL DB (LETTURA)");
@@ -129,15 +129,15 @@ public class UtilitazionDAOImpl implements DAO {
 	 *            contains only t_Id and c_Id
 	 * @return
 	 */
-	public boolean searchUtilization(Utilization utilization, int MODE) {
+	public boolean searchUtilization(Utilization utilization) {
 		ArrayList<Utilization> uList = null;
 		boolean found = false;
-		if (MODE == 1) {
-			uList = this.Read();
-			found = uList.contains(utilization);
-		}
-
-		else if (MODE == 2)
+//		if (MODE == 1) {
+//			uList = this.Read();
+//			found = uList.contains(utilization);
+//		}
+//
+//		else if (MODE == 2)
 			found = this.Read(utilization);
 
 		return found;

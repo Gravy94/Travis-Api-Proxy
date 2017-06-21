@@ -49,7 +49,7 @@ public class ProxyServer {
 	ProxyServer() throws InterruptedException {
 
 		if (ProxyServer.FIRSTTIME) {
-			cf = new ConfigFile("ConfigFile.txt");
+			cf = new ConfigFile("C:/ConfigFile.txt");
 			ProxyServer.PORT = cf.getProxyPort();
 			new LoadDb(cf.getUrlDb(), cf.getDb(), cf.getUserDb(), cf.getPasswordDb());
 
@@ -91,7 +91,7 @@ public class ProxyServer {
 					/* SEARCHING UTILIZATION */
 					// call function searchUtilization in MODE 2 (only t_id and
 					// c_id)
-					if (myServer.uDaoImpl.searchUtilization(myServer.tempUtilization, 2)) {
+					if (myServer.uDaoImpl.searchUtilization(myServer.tempUtilization)) {
 						utilizationFound = true;
 						//System.out.println("UTENTE TROVATO");
 						// load User data
@@ -154,7 +154,7 @@ public class ProxyServer {
 											// help
 							//System.out.println("RICEVUTO help build");
 							myServer.sendResponseMessageSlack(myServer.json.get("response_url"),
-									"Il comando */travis build* permette di inviare un segnale a Travis-Ci il quale fara' partire"
+									"Il comando *```/travis build```* permette di inviare un segnale a Travis-Ci il quale fara' partire"
 											+ " una build sul progetto collegato nel channel del tuo team.");
 							break;
 
@@ -173,10 +173,10 @@ public class ProxyServer {
 							//System.out.println("RICEVUTO help");
 							myServer.sendResponseMessageSlack(myServer.json.get("response_url"),
 									"*I comandi eseguibili sono*:\n"
-											+ "-Inserire una nuova registrazione ```/travis registration <Slug> <Repo> <incoming link>``` "
-											+ "-Avviare una nuova build ```/travis build``` "
-											+ "-Chiedere aiuto sui comandi utilizzabili ```/travis help``` "
-											+ "-Chiedere aiuto su un comando in particolare ```/travis help <command_name>```");
+											+ "-Inserire una nuova registrazione *```/travis registration <Slug> <Repo> <incoming link>```*"
+											+ "-Avviare una nuova build *```/travis build```* "
+											+ "-Chiedere aiuto sui comandi utilizzabili *```/travis help```* "
+											+ "-Chiedere aiuto su un comando in particolare *```/travis help <command_name>```*");
 
 							break;
 						case "build": // send public message about build result

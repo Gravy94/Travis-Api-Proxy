@@ -38,7 +38,7 @@ public class LoadDb {
 	 */
 	LoadDb(String url_db, String db, String username, String password) {
 
-		File f = new File("travis-proxy_utilizations.sql");
+		File f = new File("C:/travis-proxy_utilizations.sql");
 		if (!f.exists()) {
 			System.err.println("Error: Configuration DB file .sql does not exists!");
 			return;
@@ -85,6 +85,6 @@ public class LoadDb {
 	 * @param args
 	 */
 	public static void main(String args[]) {
-		LoadDb ldb = new LoadDb("jdbc:mysql://localhost:3306/","travis-proxy","root","root");
+		new LoadDb("jdbc:mysql://localhost:3306/","travis-proxy","root","root");
 	}
 }

@@ -37,7 +37,7 @@ public class ConfigFile {
 	}
 
 	public static void main(String args[]) throws IOException {
-		ConfigFile cf = new ConfigFile("ConfigFile.txt");
+		new ConfigFile("C:/ConfigFile.txt");
 	}
 
 	public HashMap<String, String> getConfigData() {
