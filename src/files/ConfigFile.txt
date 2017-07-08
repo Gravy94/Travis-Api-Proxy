@@ -1,0 +1,6 @@
+proxy_port=50500
+url=jdbc:mysql://localhost
+db=travis-proxy
+user_db=root
+password_db=root
+db_port=3306

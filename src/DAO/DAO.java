@@ -1,7 +1,5 @@
 package DAO;
 
-import java.util.ArrayList;
-
 import proxy.Utilization;
 
 /**
@@ -27,7 +25,7 @@ public interface DAO {
 	/**
 	 * 
 	 */
-	public ArrayList<Utilization> Read();
+	//public ArrayList<Utilization> Read();
 
 	/**
 	 * 

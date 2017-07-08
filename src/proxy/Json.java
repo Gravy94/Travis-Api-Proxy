@@ -27,7 +27,7 @@ public class Json {
 		
 	}
 
-	public HashMap<String, String> jsonParserSlack(String buffer) {
+	public void /*HashMap<String, String>*/ jsonParserSlack(String buffer) {
 
 		//HashMap<String, String>
 		
@@ -66,7 +66,7 @@ public class Json {
 		}
 		this.jsonMap.put(key, value);
 
-		return this.jsonMap;
+		//return this.jsonMap;
 	}
 	
 	

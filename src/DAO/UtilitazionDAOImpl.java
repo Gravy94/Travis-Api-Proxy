@@ -2,8 +2,6 @@ package DAO;
 
 import SQLConnection.ConnectionDB;
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.Collection;
 
 import proxy.Utilization;
 
@@ -65,26 +63,26 @@ public class UtilitazionDAOImpl implements DAO {
 		}
 	}
 
-	public ArrayList<Utilization> Read() {
-		System.err.println("IN ArrayList<Utilization> Read()");
-		Utilization utilization;
-		ArrayList<Utilization> list = new ArrayList<Utilization>();
-		try {
-			ResultSet resultSet;
-			ps = conn.prepareStatement("SELECT * FROM utilizations");
-			resultSet = ps.executeQuery();
-
-			while (resultSet.next()) {
-				// resultSet.getString()
-				utilization = new Utilization(resultSet.getString(2), resultSet.getString(3), resultSet.getString(4),
-						resultSet.getString(5), resultSet.getString(6), resultSet.getString(7));
-				list.add(utilization);
-			}
-		} catch (SQLException e) {
-			System.err.println("ERRORE NEL DB (LETTURA)");
-		}
-		return list;
-	}
+//	public ArrayList<Utilization> Read() {
+//		System.err.println("IN ArrayList<Utilization> Read()");
+//		Utilization utilization;
+//		ArrayList<Utilization> list = new ArrayList<Utilization>();
+//		try {
+//			ResultSet resultSet;
+//			ps = conn.prepareStatement("SELECT * FROM utilizations");
+//			resultSet = ps.executeQuery();
+//
+//			while (resultSet.next()) {
+//				// resultSet.getString()
+//				utilization = new Utilization(resultSet.getString(2), resultSet.getString(3), resultSet.getString(4),
+//						resultSet.getString(5), resultSet.getString(6), resultSet.getString(7));
+//				list.add(utilization);
+//			}
+//		} catch (SQLException e) {
+//			System.err.println("ERRORE NEL DB (LETTURA)");
+//		}
+//		return list;
+//	}
 
 	public boolean Read(Utilization utilization) {
 		int lenght = 0;
@@ -129,19 +127,19 @@ public class UtilitazionDAOImpl implements DAO {
 	 *            contains only t_Id and c_Id
 	 * @return
 	 */
-	public boolean searchUtilization(Utilization utilization) {
-		ArrayList<Utilization> uList = null;
-		boolean found = false;
-//		if (MODE == 1) {
-//			uList = this.Read();
-//			found = uList.contains(utilization);
-//		}
+//	public boolean searchUtilization(Utilization utilization) {
+//		ArrayList<Utilization> uList = null;
+//		boolean found = false;
+////		if (MODE == 1) {
+////			uList = this.Read();
+////			found = uList.contains(utilization);
+////		}
+////
+////		else if (MODE == 2)
+//			found = this.Read(utilization);
 //
-//		else if (MODE == 2)
-			found = this.Read(utilization);
-
-		return found;
-	}
+//		return found;
+//	}
 
 	@Override
 	public Utilization Read2(Utilization utilization) {

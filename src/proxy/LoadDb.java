@@ -38,7 +38,8 @@ public class LoadDb {
 	 */
 	LoadDb(String url_db, String db, String username, String password) {
 
-		File f = new File("C:/travis-proxy_utilizations.sql");
+		//File f = new File("travis-proxy_utilizations.sql");	// With Jar File
+		 File f = new File("src/files/travis-proxy_utilizations.sql");	// With Eclipse
 		if (!f.exists()) {
 			System.err.println("Error: Configuration DB file .sql does not exists!");
 			return;
